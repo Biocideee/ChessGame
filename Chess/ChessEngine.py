@@ -16,11 +16,15 @@ class GameState:
             ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
-            ["--", "--", "--", "--", "--", "--", "--", "--"],
+            ["--", "--", "wR", "--", "--", "bB", "--", "--"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
             ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"]
         ]
+        self.move_functions = {
+            "p": self.get_pawn_moves, "R": self.get_rook_moves, "N": self.get_knight_moves,
+            "B": self.get_bishop_moves, "Q": self.get_queen_moves, "K": self.get_king_moves
+        }
         self.white_to_move = True
         self.move_log = []
 
@@ -57,16 +61,13 @@ class GameState:
     """
 
     def get_all_possible_moves(self):
-        moves = [Move((6, 4), (4, 4), self.board)]
+        moves = []
         for r in range(len(self.board)):  # Number of rows.
             for c in range(len(self.board[r])):  # Number of columns in given row.
                 turn = self.board[r][c][0]
-                if (turn == "w" and self.white_to_move) and (turn == "b" and not self.white_to_move):
+                if (turn == "w" and self.white_to_move) or (turn == "b" and not self.white_to_move):
                     piece = self.board[r][c][1]
-                    if piece == "p":
-                        self.get_pawn_moves(r, c, moves)
-                    elif piece == "R":
-                        self.get_rook_moves(r, c, moves)
+                    self.move_functions[piece](r, c, moves)  # Calls the appropriate move function based on piece type.
         return moves
 
     """
@@ -74,13 +75,53 @@ class GameState:
     """
 
     def get_pawn_moves(self, r, c, moves):
-        pass
+        if self.white_to_move:  # White pawn moves.
+            if self.board[r - 1][c] == "--":
+                moves.append(Move((r, c), (r - 1, c), self.board))
+                if r == 6 and self.board[r - 2][c] == "--":  # 2 square pawn advance
+                    moves.append(Move((r, c), (r - 2, c), self.board))
+            if c - 1 >= 0:  # Captures to the left.
+                if self.board[r - 1][c - 1][0] == "b":  # Enemy piece to capture.
+                    moves.append(Move((r, c), (r - 1, c - 1), self.board))
+            if c + 1 <= 7:  # Captures to the right.
+                if self.board[r - 1][c + 1][0] == "b":  # Enemy piece to capture.
+                    moves.append(Move((r, c), (r - 1, c + 1), self.board))
+        else:  # Black pawn moves.
+            pass
 
     """
     Get all the rook moves for the rook located at row and column and add these moves to the list.
     """
 
     def get_rook_moves(self, r, c, moves):
+        pass
+
+    """
+    Get all the knight moves for the knight located at row and column and add these moves to the list.
+    """
+
+    def get_knight_moves(self, r, c, moves):
+        pass
+
+    """
+    Get all the bishop moves for the bishop located at row and column and add these moves to the list.
+    """
+
+    def get_bishop_moves(self, r, c, moves):
+        pass
+
+    """
+    Get all the queen moves for the queen located at row and column and add these moves to the list.
+    """
+
+    def get_queen_moves(self, r, c, moves):
+        pass
+
+    """
+    Get all the king moves for the king located at row and column and add these moves to the list.
+    """
+
+    def get_king_moves(self, r, c, moves):
         pass
 
 
@@ -102,7 +143,6 @@ class Move:
         self.piece_moved = board[self.start_row][self.start_col]
         self.piece_captured = board[self.end_row][self.end_col]
         self.move_ID = self.start_row * 1000 + self.start_col * 100 + self.end_row * 10 + self.end_col
-        print(self.move_ID)
 
     """
     Overriding the equals method.
@@ -112,7 +152,6 @@ class Move:
         if isinstance(other, Move):
             return self.move_ID == other.move_ID
         return False
-
 
     def get_chess_notation(self):
         #  It makes real chess notation.
