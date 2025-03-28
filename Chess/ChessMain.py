@@ -36,10 +36,14 @@ def main():
     clock = p.time.Clock()
     screen.fill(p.Color("white"))
     game_state = ChessEngine.GameState()
+    valid_moves = game_state.get_valid_moves()
+    move_made = False  # When a move is made.
+
     load_images()  # Only do this once, before the while loop
     running = True
     square_selected = ()  # No square is selected initially, keep track of the last click of the user (tuple: row, col).
     player_clicks = []  # Keep track of player clicks (2 tuples: [(6, 4), (4, 4)])
+
     while running:
         for e in p.event.get():
             if e.type == p.QUIT:
@@ -59,13 +63,20 @@ def main():
 
                 if len(player_clicks) == 2:  # After 2nd click.
                     move = ChessEngine.Move(player_clicks[0], player_clicks[1], game_state.board)
-                    game_state.make_move(move)
+                    if move in valid_moves:
+                        game_state.make_move(move)
+                        move_made = True
                     square_selected = ()  # Reset user clicks.
                     player_clicks = []
             # Key handlers.
             elif e.type == p.KEYDOWN:
-                if e.key == p.K_z: # Undo when 'z' is pressed
+                if e.key == p.K_z:  # Undo when 'z' is pressed
                     game_state.undo_move()
+                    move_made = True
+
+        if move_made:
+            valid_moves = game_state.get_valid_moves()
+            move_made = False
 
         draw_game_state(screen, game_state)
         clock.tick(MAX_FPS)
@@ -73,7 +84,7 @@ def main():
 
 
 """
-Responsible for all the graphics within a currnet game state.
+Responsible for all the graphics within a current game state.
 """
 
 

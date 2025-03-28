@@ -45,6 +45,44 @@ class GameState:
             self.board[move.end_row][move.end_col] = move.piece_captured
             self.white_to_move = not self.white_to_move  # Swap players.
 
+    """
+    All moves considering checks.
+    """
+
+    def get_valid_moves(self):
+        return self.get_all_possible_moves()
+
+    """
+    All moves without considering checks.
+    """
+
+    def get_all_possible_moves(self):
+        moves = [Move((6, 4), (4, 4), self.board)]
+        for r in range(len(self.board)):  # Number of rows.
+            for c in range(len(self.board[r])):  # Number of columns in given row.
+                turn = self.board[r][c][0]
+                if (turn == "w" and self.white_to_move) and (turn == "b" and not self.white_to_move):
+                    piece = self.board[r][c][1]
+                    if piece == "p":
+                        self.get_pawn_moves(r, c, moves)
+                    elif piece == "R":
+                        self.get_rook_moves(r, c, moves)
+        return moves
+
+    """
+    Get all the pawn moves for the pawn located at row and column and add these moves to the list.
+    """
+
+    def get_pawn_moves(self, r, c, moves):
+        pass
+
+    """
+    Get all the rook moves for the rook located at row and column and add these moves to the list.
+    """
+
+    def get_rook_moves(self, r, c, moves):
+        pass
+
 
 class Move:
     # Maps keys to values
@@ -63,6 +101,18 @@ class Move:
         self.end_col = end_square[1]
         self.piece_moved = board[self.start_row][self.start_col]
         self.piece_captured = board[self.end_row][self.end_col]
+        self.move_ID = self.start_row * 1000 + self.start_col * 100 + self.end_row * 10 + self.end_col
+        print(self.move_ID)
+
+    """
+    Overriding the equals method.
+    """
+
+    def __eq__(self, other):
+        if isinstance(other, Move):
+            return self.move_ID == other.move_ID
+        return False
+
 
     def get_chess_notation(self):
         #  It makes real chess notation.
