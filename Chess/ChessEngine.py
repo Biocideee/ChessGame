@@ -16,7 +16,7 @@ class GameState:
             ["bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
-            ["--", "--", "wR", "--", "--", "bB", "--", "--"],
+            ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["--", "--", "--", "--", "--", "--", "--", "--"],
             ["wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp"],
             ["wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"]
@@ -80,49 +80,121 @@ class GameState:
                 moves.append(Move((r, c), (r - 1, c), self.board))
                 if r == 6 and self.board[r - 2][c] == "--":  # 2 square pawn advance
                     moves.append(Move((r, c), (r - 2, c), self.board))
+
+            # Captures for white
             if c - 1 >= 0:  # Captures to the left.
                 if self.board[r - 1][c - 1][0] == "b":  # Enemy piece to capture.
                     moves.append(Move((r, c), (r - 1, c - 1), self.board))
+
             if c + 1 <= 7:  # Captures to the right.
                 if self.board[r - 1][c + 1][0] == "b":  # Enemy piece to capture.
                     moves.append(Move((r, c), (r - 1, c + 1), self.board))
+
         else:  # Black pawn moves.
-            pass
+            if self.board[r + 1][c] == "--":
+                moves.append(Move((r, c), (r + 1, c), self.board))
+                if r == 1 and self.board[r + 2][c] == "--":  # 2 square pawn advance
+                    moves.append(Move((r, c), (r + 2, c), self.board))
+
+            # Captures for black
+            if c - 1 >= 0:  # Captures to the left.
+                if self.board[r + 1][c - 1][0] == "w":
+                    moves.append(Move((r, c), (r + 1, c - 1), self.board))
+
+            if c + 1 <= 7:  # Captures to the right.
+                if self.board[r + 1][c + 1][0] == "w":
+                    moves.append(Move((r, c), (r + 1, c + 1), self.board))
 
     """
     Get all the rook moves for the rook located at row and column and add these moves to the list.
     """
 
     def get_rook_moves(self, r, c, moves):
-        pass
+        directions = ((-1, 0), (0, -1), (1, 0), (0, 1))  # up, left, down, right.
+        enemy_color = "b" if self.white_to_move else "w"
+
+        for direction in directions:
+            for i in range(1, 8):
+                end_row = r + direction[0] * i
+                end_col = c + direction[1] * i
+                if 0 <= end_row < 8 and 0 <= end_col < 8:  # On board.
+                    end_piece = self.board[end_row][end_col]
+                    if end_piece == "--":  # Empty space valid.
+                        moves.append(Move((r, c), (end_row, end_col), self.board))
+
+                    elif end_piece[0] == enemy_color:  # Enemy piece valid.
+                        moves.append(Move((r, c), (end_row, end_col), self.board))
+                        break
+                    else:  # friendly piece invalid.
+                        break
+                else:  # Off board.
+                    break
 
     """
     Get all the knight moves for the knight located at row and column and add these moves to the list.
     """
 
     def get_knight_moves(self, r, c, moves):
-        pass
+        directions = ((-2, -1), (-2, 1), (-1, -2), (-1, 2), (1, -2), (1, 2), (2, -1), (2, 1))
+        ally_color = "w" if self.white_to_move else "b"
+
+        for direction in directions:
+            end_row = r + direction[0]
+            end_col = c + direction[1]
+            if 0 <= end_row < 8 and 0 <= end_col < 8:
+                end_piece = self.board[end_row][end_col]
+                if end_piece[0] != ally_color:  # Enemy piece valid.
+                    moves.append(Move((r, c), (end_row, end_col), self.board))
 
     """
     Get all the bishop moves for the bishop located at row and column and add these moves to the list.
     """
 
     def get_bishop_moves(self, r, c, moves):
-        pass
+        directions = ((-1, -1), (-1, 1), (1, -1), (1, 1))  # 4 diagonals.
+        enemy_color = "b" if self.white_to_move else "w"
+
+        for direction in directions:
+            for i in range(1, 8):  # Bishop can move 7 squares max.
+                end_row = r + direction[0] * i
+                end_col = c + direction[1] * i
+                if 0 <= end_row < 8 and 0 <= end_col < 8:  # On board.
+                    end_piece = self.board[end_row][end_col]
+                    if end_piece == "--":  # Empty space valid.
+                        moves.append(Move((r, c), (end_row, end_col), self.board))
+
+                    elif end_piece[0] == enemy_color:  # Enemy piece valid.
+                        moves.append(Move((r, c), (end_row, end_col), self.board))
+                        break
+                    else:  # friendly piece invalid.
+                        break
+                else:  # Off board.
+                    break
 
     """
     Get all the queen moves for the queen located at row and column and add these moves to the list.
     """
 
     def get_queen_moves(self, r, c, moves):
-        pass
+        self.get_rook_moves(r, c, moves)
+        self.get_bishop_moves(r, c, moves)
 
     """
     Get all the king moves for the king located at row and column and add these moves to the list.
     """
 
     def get_king_moves(self, r, c, moves):
-        pass
+        directions = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1))
+        ally_color = "w" if self.white_to_move else "b"
+
+        for i in range(8):
+            end_row = r + directions[i][0]
+            end_col = c + directions[i][1]
+
+            if 0 <= end_row < 8 and 0 <= end_col < 8:
+                end_piece = self.board[end_row][end_col]
+                if end_piece[0] != ally_color:
+                    moves.append(Move((r, c), (end_row, end_col), self.board))
 
 
 class Move:
