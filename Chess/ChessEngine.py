@@ -80,7 +80,7 @@ class GameState:
             # 4) For each of your opponent's moves, see if they attack your king.
             self.white_to_move = not self.white_to_move
             if self.in_check():
-                moves.remove(moves[i])  # 5) If they do attack your king, then not a valid move.
+                moves.remove(moves[i])  # 5) If they do attack your king, not a valid move.
             self.white_to_move = not self.white_to_move
             self.undo_move()
 
