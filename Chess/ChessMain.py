@@ -63,12 +63,14 @@ def main():
 
                 if len(player_clicks) == 2:  # After 2nd click.
                     move = ChessEngine.Move(player_clicks[0], player_clicks[1], game_state.board)
-                    if move in valid_moves:
-                        game_state.make_move(move)
-                        move_made = True
-                        square_selected = ()  # Reset user clicks.
-                        player_clicks = []
-                    else:
+                    print(move.get_chess_notation())
+                    for i in range(len(valid_moves)):
+                        if move == valid_moves[i]:
+                            game_state.make_move(valid_moves[i])
+                            move_made = True
+                            square_selected = ()  # Reset user clicks.
+                            player_clicks = []
+                    if not move_made:
                         player_clicks = [square_selected]
             # Key handlers.
             elif e.type == p.KEYDOWN:
@@ -118,7 +120,7 @@ def draw_pieces(screen, board):
     for r in range(DIMENSION):
         for c in range(DIMENSION):
             piece = board[r][c]
-            if piece != "--":  # Not empty square
+            if piece != "--":  # Not an empty square
                 screen.blit(IMAGES[piece], p.Rect(c * SQUARE_SIZE, r * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
 
 
