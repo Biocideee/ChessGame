@@ -41,6 +41,8 @@ class GameState:
                 self.castling_rights.black_queen_side,
             )
         ]
+        self.pawn_promotion = False
+        self.promotion_square = ()
 
     """
     Takes a move as a parameter and executes it.
@@ -436,6 +438,7 @@ class Move:
         # Castling.
         self.is_castling_move = is_castling_move
 
+        self.is_capture = self.piece_captured != "--"
         self.move_ID = self.start_row * 1000 + self.start_col * 100 + self.end_row * 10 + self.end_col
 
     """
@@ -453,6 +456,29 @@ class Move:
 
     def get_rank_file(self, r, c):
         return self.cols_to_files[c] + self.rows_to_ranks[r]
+
+    def __str__(self):
+        # Castling.
+        if self.is_castling_move:
+            return "O-O" if self.end_col == 6 else "O-O-O"
+        end_square = self.get_rank_file(self.end_row, self.end_col)
+        # Pawn moves.
+        if self.piece_moved[1] == "p":
+            if self.is_capture:
+                return self.cols_to_files[self.start_col] + "x" + end_square
+            else:
+                return end_square
+        # Pawn promotions.
+        if self.is_pawn_promotion:
+            if self.is_capture:
+                return self.piece_moved[1] + "q" + end_square
+            else:
+                return self.piece_moved[1] + end_square
+        # Piece moves.
+        move_str = self.piece_moved[1]
+        if self.is_capture:
+            move_str += "x"
+        return move_str + end_square
 
 
 class Castling:
