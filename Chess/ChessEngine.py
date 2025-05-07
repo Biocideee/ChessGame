@@ -26,6 +26,7 @@ class GameState:
         }
         self.white_to_move = True
         self.move_log = []
+        self.redo_log = []
         self.white_king_location = (7, 4)  # Initial coordinates of the white king.
         self.black_king_location = (0, 4)  # Initial coordinates of the black king.
         self.checkmate = False
@@ -92,7 +93,7 @@ class GameState:
             )
         )
 
-    def undo_move(self):
+    def undo_move(self, add_to_redo_stack=True):
         """
         Undo the last move made.
         """
@@ -138,6 +139,16 @@ class GameState:
                 else:
                     self.board[move.end_row][move.end_col - 2] = self.board[move.end_row][move.end_col + 1]
                     self.board[move.end_row][move.end_col + 1] = "--"
+
+            if add_to_redo_stack:
+                self.redo_log.append(move)
+
+    def redo_move(self):
+        """
+        Redo the last undo move.
+        """
+        if len(self.redo_log) != 0:
+            self.make_move(self.redo_log.pop())
 
     def update_castling(self, move):
         """
@@ -189,7 +200,7 @@ class GameState:
             if self.in_check():
                 moves.remove(moves[i])  # 5) If they do attack your king, not a valid move.
             self.white_to_move = not self.white_to_move
-            self.undo_move()
+            self.undo_move(add_to_redo_stack=False)
 
         if len(moves) == 0:  # Either checkmate or stalemate.
             if self.in_check():
@@ -479,6 +490,18 @@ class Move:
         A function that converts row and column to a rank file notation.
         """
         return self.cols_to_files[c] + self.rows_to_ranks[r]
+
+    @staticmethod
+    def get_row_col_from_notation(notation):
+        """
+        Helper function to get (row, col) from chess notation (e.g., 'e2e4').
+        """
+        start_file, start_rank, end_file, end_rank = notation
+        start_row = Move.ranks_to_rows[start_rank]
+        start_col = Move.files_to_cols[start_file]
+        end_row = Move.ranks_to_rows[end_rank]
+        end_col = Move.files_to_cols[end_file]
+        return (start_row, start_col), (end_row, end_col)
 
 
 class Castling:

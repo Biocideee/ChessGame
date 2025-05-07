@@ -5,6 +5,7 @@ It will be responsible for handling user input and displaying the current GameSt
 
 import pygame as p
 from Chess import ChessEngine
+from tkinter import messagebox
 
 # Size constants.
 WIDTH = HEIGHT = 512
@@ -23,6 +24,7 @@ MOVE_LOG_BACKGROUND_COLOR = p.Color("#2f2e2b")
 GAME_INFO_BACKGROUND_COLOR = p.Color("#2f2e2b")
 TEXT_COLOR = p.Color("white")
 BORDER_COLOR = p.Color("#252422")
+BUTTON_HOVER_COLOR = p.Color("#444340")
 
 IMAGES = {}
 
@@ -34,7 +36,7 @@ def load_images():
     pieces = ["wp", "wR", "wN", "wB", "wQ", "wK",
               "bp", "bR", "bN", "bB", "bQ", "bK"]
     for piece in pieces:
-        IMAGES[piece] = p.transform.scale(p.image.load("images/" + piece + ".png"), (SQUARE_SIZE, SQUARE_SIZE))
+        IMAGES[piece] = p.transform.smoothscale(p.image.load("images/" + piece + ".png"), (SQUARE_SIZE, SQUARE_SIZE))
         # Note: we can access an image by saying 'IMAGES['wp'].
 
 
@@ -106,7 +108,7 @@ def draw_move_log_panel(screen, game_state, font, offset):
             move_str += str(move_log[i + 1]) + " "
         move_text_list.append(move_str)
 
-    padding = 5
+    padding = 10
     line_spacing = 2
     text_y = padding - offset
     for i in range(len(move_text_list)):
@@ -116,12 +118,15 @@ def draw_move_log_panel(screen, game_state, font, offset):
         screen.blit(text_surface, text_location)
         text_y += text_surface.get_height() + line_spacing
 
+    # Rectangle that closes the gap from the top of the move log background so the text will not appear.
+    draw_rects(screen, WIDTH + 5, 0, MOVE_LOG_PANEL_WIDTH - 10, 25, MOVE_LOG_BACKGROUND_COLOR)
+
     # Draw rectangles and texts on top of them.
-    draw_rects(screen, WIDTH, 0, MOVE_LOG_PANEL_WIDTH, 25, BORDER_COLOR)
-    draw_texts(screen, WIDTH + 80, 0, 0, 0, "Move Log")
+    draw_rects(screen, WIDTH + 5, 5, MOVE_LOG_PANEL_WIDTH - 10, 25, BORDER_COLOR)
+    draw_texts(screen, WIDTH + 85, 6, 0, 0, "Move log")
 
 
-def draw_game_info_panel(screen, game_state):
+def draw_game_menu_panel(screen, game_state):
     """
     Draws the game info panel.
     """
@@ -129,11 +134,34 @@ def draw_game_info_panel(screen, game_state):
     p.draw.rect(screen, GAME_INFO_BACKGROUND_COLOR, game_info_rect)
 
     # Draw rectangles and texts on top of them.
-    draw_rects(screen, WIDTH, MOVE_LOG_PANEL_HEIGHT, MOVE_LOG_PANEL_WIDTH, 25, BORDER_COLOR)
-    draw_texts(screen, WIDTH + 75, MOVE_LOG_PANEL_HEIGHT, 0, 0, "Game Info")
+    draw_rects(screen, WIDTH + 5, MOVE_LOG_PANEL_HEIGHT, MOVE_LOG_PANEL_WIDTH - 10, 25, BORDER_COLOR)
+    draw_texts(screen, WIDTH + 80, MOVE_LOG_PANEL_HEIGHT, 0, 0, "Game menu")
 
-    draw_texts(screen, WIDTH + 5, MOVE_LOG_PANEL_HEIGHT + 30, 0, 0,
-               "White's turn" if game_state.white_to_move else "Black's turn", 15)
+    # Draw the save button rectangle.
+    draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 30, MOVE_LOG_PANEL_WIDTH - 20, 25, BORDER_COLOR)
+    draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 33, 0, 0, "Save game", 15)
+
+    # Draw the load button rectangle.
+    draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 60, MOVE_LOG_PANEL_WIDTH - 20, 25, BORDER_COLOR)
+    draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 63, 0, 0, "Load game", 15)
+
+    # Draw the move back button rectangle.
+    draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 90, (MOVE_LOG_PANEL_WIDTH / 2) - 10, 25, BORDER_COLOR)
+    draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 93, 0, 0, "Move back", 15)
+
+    # Draw the move forward button rectangle.
+    draw_rects(screen, WIDTH + (MOVE_LOG_PANEL_WIDTH / 2) + 5, MOVE_LOG_PANEL_HEIGHT + 90,
+               (MOVE_LOG_PANEL_WIDTH / 2) - 15, 25, BORDER_COLOR)
+    draw_texts(screen, WIDTH + (MOVE_LOG_PANEL_WIDTH / 2) + 8, MOVE_LOG_PANEL_HEIGHT + 93, 0, 0,
+               "Move forward", 15)
+
+    # Draw the reset button rectangle.
+    draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 120, MOVE_LOG_PANEL_WIDTH - 20, 25, BORDER_COLOR)
+    draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 123, 0, 0, "Reset game", 15)
+
+    # Draw the exit the game button.
+    draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 150, MOVE_LOG_PANEL_WIDTH - 20, 25, BORDER_COLOR)
+    draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 153, 0, 0, "Exit game", 15)
 
 
 def draw_texts(screen, left, top, width, height, text, size=18):
@@ -181,7 +209,7 @@ def draw_game_state(screen, game_state, valid_moves, square_selected, move_log_f
                     square_selected)  # Draw highlighting on valid squares before pieces drawn.
     draw_pieces(screen, game_state.board)  # Draw pieces on top of those squares
     draw_move_log_panel(screen, game_state, move_log_font, move_log_offset)  # Draw move log panel.
-    draw_game_info_panel(screen, game_state)  # Draw the game info panel.
+    draw_game_menu_panel(screen, game_state)  # Draw the game info panel.
 
 
 def animate_move(move, screen, board, clock):
@@ -212,37 +240,96 @@ def animate_move(move, screen, board, clock):
         clock.tick(60)  # 60 fps.
 
 
+def save_game_state(game_state, filename="saved_game.txt"):
+    """
+    A function that saves the game state (move log, en passant, castling rights) to a file.
+    """
+    with open(filename, "w") as file:
+        file.write("# Chess Game Save File\n")
+        for move in game_state.move_log:
+            notation = move.get_chess_notation()
+            if move.is_en_passant_move:
+                notation += " ep"
+            elif move.is_castling_move:
+                notation += " castle"
+            file.write(f"{notation}\n")
+
+
+def load_game_state(screen, clock, filename="saved_game.txt"):
+    """
+    A function that loads the game state from a file by replaying the move log.
+    """
+    with open(filename, "r") as f:
+        lines = [line.strip() for line in f.readlines() if line.strip() and not line.startswith('#')]
+
+    game_state = ChessEngine.GameState()
+    game_state.redo_log = []
+
+    for notation_with_flags in lines:
+        notation_parts = notation_with_flags.split()
+        notation = notation_parts[0]
+        if len(notation) == 4:
+            start_sq, end_sq = ChessEngine.Move.get_row_col_from_notation(notation)
+            possible_moves = game_state.get_valid_moves()
+
+            for move in possible_moves:
+                if move.start_row == start_sq[0] and move.start_col == start_sq[1] and \
+                        move.end_row == end_sq[0] and move.end_col == end_sq[1]:
+                    is_ep_flag = "ep" in notation_parts
+                    is_castle_flag = "castle" in notation_parts
+                    if move.is_en_passant_move == is_ep_flag and move.is_castling_move == is_castle_flag:
+                        game_state.make_move(move)
+                        # animate_move(game_state.move_log[-1], screen, game_state.board, clock)
+                        break
+            else:
+                messagebox.showerror("Invalid move", f"Invalid move found in save file: {notation_with_flags}")
+        elif notation_with_flags:
+            messagebox.showerror("Invalid notation format",
+                                 f"Warning: Invalid notation format in save file: {notation_with_flags}")
+    return game_state
+
+
 def main():
     """
     The main driver for our code. This will handle the user input and update the graphics.
     """
     p.init()
+    p.display.set_caption(f"Pygame chess: White's turn")
     screen = p.display.set_mode((WIDTH + MOVE_LOG_PANEL_WIDTH, HEIGHT))
     clock = p.time.Clock()
     screen.fill(TEXT_COLOR)
-    move_log_font = p.font.SysFont("Times New Roman", 15, False, False)
+    move_log_font = p.font.SysFont("Times New Roman", 17, False, False)
     game_state = ChessEngine.GameState()
     valid_moves = game_state.get_valid_moves()
     move_made = False  # When a move is made.
     animate = False  # When we want to show the animation of a move.
     game_over = False  # When the game is over.
-
     load_images()  # Only do this once, before the while loop
-    square_selected = ()  # No square is selected initially,
-    # keep track of the last click of the user (tuple: row, col) 2.
+    run = True
+
+    # No square is selected initially, keep track of the last click of the user (tuple: row, col) 2.
+    square_selected = ()
     player_clicks = []  # Keep track of player clicks (2 tuples: [(6, 4), (4, 4)])
+
+    # Rectangles that create fields of press on buttons.
+    save_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 30, MOVE_LOG_PANEL_WIDTH - 20, 25)
+    load_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 60, MOVE_LOG_PANEL_WIDTH - 20, 25)
+    move_back_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 90, (MOVE_LOG_PANEL_WIDTH / 2) - 10, 25)
+    move_forward_button_rect = p.Rect(WIDTH + (MOVE_LOG_PANEL_WIDTH / 2) + 5, MOVE_LOG_PANEL_HEIGHT + 90,
+                                      (MOVE_LOG_PANEL_WIDTH / 2) - 15, 25)
+    reset_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 120, MOVE_LOG_PANEL_WIDTH - 20, 25)
+    exit_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 150, MOVE_LOG_PANEL_WIDTH - 20, 25)
 
     # Constants for scrolling the move log panel.
     move_log_offset = 0
-    scroll_speed = 15
+    scroll_speed = 20
 
-    while True:
+    while run:
         for e in p.event.get():
             if e.type == p.QUIT:
-                p.quit()
-                exit()
-            # Mouse handler.
-            elif e.type == p.MOUSEBUTTONDOWN:
+                run = False
+            # Mouse button handler.
+            elif e.type == p.MOUSEBUTTONDOWN and e.button == 1:
                 if not game_over:
                     location = p.mouse.get_pos()  # (x, y) location of the mouse.
                     col = location[0] // SQUARE_SIZE
@@ -258,32 +345,77 @@ def main():
 
                     if len(player_clicks) == 2:  # After 2nd click.
                         move = ChessEngine.Move(player_clicks[0], player_clicks[1], game_state.board)
-                        print(move.get_chess_notation())
                         for i in range(len(valid_moves)):
                             if move == valid_moves[i]:
                                 game_state.make_move(valid_moves[i])
+                                game_state.redo_log = []
                                 move_made = True
                                 animate = True
                                 square_selected = ()  # Reset user clicks.
                                 player_clicks = []
                         if not move_made:
                             player_clicks = [square_selected]
-            # Key handlers.
-            elif e.type == p.KEYDOWN:
-                if e.key == p.K_z:  # Undo when "z" is pressed.
-                    game_state.undo_move()
-                    move_made = True
-                    animate = False
-                    game_over = False
 
-                if e.key == p.K_r:  # Reset the game when "z" is pressed.
-                    game_state = ChessEngine.GameState()
-                    valid_moves = game_state.get_valid_moves()
-                    square_selected = ()
-                    player_clicks = []
-                    move_made = False
-                    animate = False
+                    if save_button_rect.collidepoint(location):
+                        save_game_state(game_state)
+                        draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 30, MOVE_LOG_PANEL_WIDTH - 20, 25,
+                                   TEXT_COLOR)
+                        p.display.flip()
+                        # p.time.delay(200)
 
+                    if load_button_rect.collidepoint(location):
+                        loaded_game_state = load_game_state(screen, clock)
+                        if loaded_game_state:
+                            game_state = loaded_game_state
+                            valid_moves = game_state.get_valid_moves()  # Update valid moves after loading
+                            move_made = True  # Force redraw
+                            animate = False
+                            square_selected = ()
+                            player_clicks = []
+                            move_log_offset = 0  # Reset move log scroll
+                            draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 60, MOVE_LOG_PANEL_WIDTH - 20, 25,
+                                       TEXT_COLOR)
+                            p.display.flip()
+
+                    if move_back_button_rect.collidepoint(location):
+                        if game_state.move_log:
+                            game_state.undo_move()
+                            move_made = True
+                            animate = False
+                            game_over = False
+                        draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 90, (MOVE_LOG_PANEL_WIDTH / 2) - 10, 25,
+                                   TEXT_COLOR)
+                        p.display.flip()
+
+                    if move_forward_button_rect.collidepoint(location):
+                        if game_state.redo_log:
+                            game_state.redo_move()
+                            move_made = True
+                            animate = True
+                            game_over = False
+                            draw_rects(screen, WIDTH + (MOVE_LOG_PANEL_WIDTH / 2) + 5, MOVE_LOG_PANEL_HEIGHT + 90,
+                                       (MOVE_LOG_PANEL_WIDTH / 2) - 15, 25, TEXT_COLOR)
+                            p.display.flip()
+
+                    if reset_button_rect.collidepoint(location):
+                        game_state = ChessEngine.GameState()
+                        valid_moves = game_state.get_valid_moves()
+                        square_selected = ()
+                        player_clicks = []
+                        move_made = False
+                        animate = False
+                        p.display.set_caption(f"Pygame chess: White's turn")
+                        draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 120, MOVE_LOG_PANEL_WIDTH - 20, 25,
+                                   TEXT_COLOR)
+                        p.display.flip()
+
+                    if exit_button_rect.collidepoint(location):
+                        draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 150, MOVE_LOG_PANEL_WIDTH - 20, 25,
+                                   TEXT_COLOR)
+                        p.display.flip()
+                        run = False
+
+            # Mouse scroll handler.
             elif e.type == p.MOUSEWHEEL:
                 location = p.mouse.get_pos()
                 col = location[0] // SQUARE_SIZE
@@ -291,13 +423,17 @@ def main():
                 if col >= 8 and row <= 3:
                     move_log_offset -= scroll_speed * e.y
                     text_height = (len(game_state.move_log) // 2 + (1 if len(game_state.move_log) % 2 != 0 else 0)) * (
-                            move_log_font.get_linesize() + 2) + 2 * 5
+                            move_log_font.get_linesize() + 2) + 2 * 15
                     move_log_offset = max(0, min(move_log_offset,
                                                  text_height - MOVE_LOG_PANEL_HEIGHT if text_height > MOVE_LOG_PANEL_HEIGHT else 0))
 
         if move_made:
             if animate:
                 animate_move(game_state.move_log[-1], screen, game_state.board, clock)
+
+            turn = "White's turn" if game_state.white_to_move else "Black's turn"
+            p.display.set_caption(f"Pygame chess: {turn}")
+
             valid_moves = game_state.get_valid_moves()
             move_made = False
             animate = False
