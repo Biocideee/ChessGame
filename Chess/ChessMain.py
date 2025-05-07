@@ -19,10 +19,10 @@ LIGHT_SQUARE_COLOR = p.Color("#edd6b0")
 DARK_SQUARE_COLOR = p.Color("#b88762")
 HIGHLIGHT_COLOR = p.Color("#fae623")
 MOVE_HIGHLIGHT_COLOR = p.Color("#f6ea70")
-MOVE_LOG_BACKGROUND_COLOR = p.Color("#2e2d2a")
-GAME_INFO_BACKGROUND_COLOR = p.Color("#2e2d2a")
+MOVE_LOG_BACKGROUND_COLOR = p.Color("#2f2e2b")
+GAME_INFO_BACKGROUND_COLOR = p.Color("#2f2e2b")
 TEXT_COLOR = p.Color("white")
-BORDER_COLOR = p.Color("#1c1b1a")
+BORDER_COLOR = p.Color("#252422")
 
 IMAGES = {}
 
@@ -59,16 +59,27 @@ def highlight_moves(screen, game_state, valid_moves, square_selected):
         if game_state.board[r][c][0] == ("w" if game_state.white_to_move else "b"):  # Square_selected is a valid piece.
 
             # Highlight a selected square.
-            s = p.Surface((SQUARE_SIZE, SQUARE_SIZE))
-            s.set_alpha(100)  # 0 is transparent, 255 is no transparent.
-            s.fill(HIGHLIGHT_COLOR)
-            screen.blit(s, (c * SQUARE_SIZE, r * SQUARE_SIZE))
+            surface = p.Surface((SQUARE_SIZE, SQUARE_SIZE))
+            surface.set_alpha(100)  # 0 is transparent, 255 is no transparent.
+            surface.fill(HIGHLIGHT_COLOR)
+            screen.blit(surface, (c * SQUARE_SIZE, r * SQUARE_SIZE))
 
             # Highlight moves of a selected square.
-            s.fill(MOVE_HIGHLIGHT_COLOR)
+            surface.fill(MOVE_HIGHLIGHT_COLOR)
             for move in valid_moves:
                 if move.start_row == r and move.start_col == c:
-                    screen.blit(s, (move.end_col * SQUARE_SIZE, move.end_row * SQUARE_SIZE))
+                    screen.blit(surface, (move.end_col * SQUARE_SIZE, move.end_row * SQUARE_SIZE))
+
+    if game_state.in_check():
+        king_location = game_state.get_king_location()
+        if king_location:
+            # Highlight the king if in check.
+            surface = p.Surface((SQUARE_SIZE, SQUARE_SIZE))
+            surface.set_alpha(100)
+            kr, kc = king_location
+            surface.fill("red")
+            screen.blit(surface, (kc * SQUARE_SIZE, kr * SQUARE_SIZE))
+
 
 
 def draw_pieces(screen, board):
@@ -102,13 +113,13 @@ def draw_move_log_panel(screen, game_state, font, offset):
     for i in range(len(move_text_list)):
         text = move_text_list[i]
         text_surface = font.render(text, True, TEXT_COLOR)
-        text_location = move_log_rect.move(padding, text_y + 20)
+        text_location = move_log_rect.move(padding, text_y + 25)
         screen.blit(text_surface, text_location)
         text_y += text_surface.get_height() + line_spacing
 
     # Draw rectangles and texts on top of them.
     draw_rects(screen, WIDTH, 0, MOVE_LOG_PANEL_WIDTH, 25, BORDER_COLOR)
-    draw_texts(screen, WIDTH + 70, 0, 0, 0, "Move Log")
+    draw_texts(screen, WIDTH + 80, 0, 0, 0, "Move Log")
 
 
 def draw_game_info_panel(screen, game_state):
@@ -120,9 +131,9 @@ def draw_game_info_panel(screen, game_state):
 
     # Draw rectangles and texts on top of them.
     draw_rects(screen, WIDTH, MOVE_LOG_PANEL_HEIGHT, MOVE_LOG_PANEL_WIDTH, 25, BORDER_COLOR)
-    draw_texts(screen, WIDTH + 70, MOVE_LOG_PANEL_HEIGHT, 0, 0, "Game Info")
+    draw_texts(screen, WIDTH + 75, MOVE_LOG_PANEL_HEIGHT, 0, 0, "Game Info")
 
-    draw_texts(screen, WIDTH + 5, MOVE_LOG_PANEL_HEIGHT + 25, 0, 0,
+    draw_texts(screen, WIDTH + 5, MOVE_LOG_PANEL_HEIGHT + 30, 0, 0,
                "White's turn" if game_state.white_to_move else "Black's turn", 15)
 
 

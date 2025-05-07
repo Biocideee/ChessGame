@@ -393,6 +393,12 @@ class GameState:
             if not self.square_under_attack(r, c - 1) and not self.square_under_attack(r, c - 2):
                 moves.append(Move((r, c), (r, c - 2), self.board, is_castling_move=True))
 
+    def get_king_location(self):
+        """
+        A function that returns the location of the king.
+        """
+        return self.white_king_location if self.white_to_move else self.black_king_location
+
 
 class Move:
     """
