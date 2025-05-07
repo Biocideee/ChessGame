@@ -26,8 +26,8 @@ class GameState:
         }
         self.white_to_move = True
         self.move_log = []
-        self.white_king_location = (7, 4)
-        self.black_king_location = (0, 4)
+        self.white_king_location = (7, 4)  # Initial coordinates of the white king.
+        self.black_king_location = (0, 4)  # Initial coordinates of the black king.
         self.checkmate = False
         self.stalemate = False
         self.en_passant_possible = ()  # Coordinates for the square en passant capture are possible.

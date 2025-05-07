@@ -12,7 +12,7 @@ MOVE_LOG_PANEL_WIDTH = 250
 MOVE_LOG_PANEL_HEIGHT = HEIGHT / 2
 DIMENSION = 8  # Dimensions of a chess board.
 SQUARE_SIZE = HEIGHT // DIMENSION
-MAX_FPS = 30  # For animations.
+MAX_FPS = 60  # For animations.
 
 # Color constants.
 LIGHT_SQUARE_COLOR = p.Color("#edd6b0")
@@ -79,7 +79,6 @@ def highlight_moves(screen, game_state, valid_moves, square_selected):
             kr, kc = king_location
             surface.fill("red")
             screen.blit(surface, (kc * SQUARE_SIZE, kr * SQUARE_SIZE))
-
 
 
 def draw_pieces(screen, board):
@@ -171,7 +170,7 @@ def draw_end_game_text(screen, text):
     screen.blit(text_surface, text_location.move(1, 1))
 
 
-def draw_game_state(screen, game_state, valid_moves, square_selected, move_log_font):
+def draw_game_state(screen, game_state, valid_moves, square_selected, move_log_font, move_log_offset):
     """
     Responsible for all the graphics within a current game state.
     """
@@ -217,7 +216,6 @@ def main():
     """
     The main driver for our code. This will handle the user input and update the graphics.
     """
-    global move_log_offset
     p.init()
     screen = p.display.set_mode((WIDTH + MOVE_LOG_PANEL_WIDTH, HEIGHT))
     clock = p.time.Clock()
@@ -304,7 +302,7 @@ def main():
             move_made = False
             animate = False
 
-        draw_game_state(screen, game_state, valid_moves, square_selected, move_log_font)
+        draw_game_state(screen, game_state, valid_moves, square_selected, move_log_font, move_log_offset)
 
         if game_state.checkmate or game_state.stalemate:
             game_over = True
