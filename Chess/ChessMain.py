@@ -40,7 +40,7 @@ def load_images():
         # Note: we can access an image by saying 'IMAGES['wp'].
 
 
-def draw_board(screen):
+def draw_board_and_notation(screen, move):
     """
     Draw the squares on the board. The top left square is always light.
     """
@@ -49,7 +49,20 @@ def draw_board(screen):
     for r in range(DIMENSION):
         for c in range(DIMENSION):
             color = colors[((r + c) % 2)]
+            reversed_color = colors[((r + c) % 2) ^ 1]
             p.draw.rect(screen, color, p.Rect(c * SQUARE_SIZE, r * SQUARE_SIZE, SQUARE_SIZE, SQUARE_SIZE))
+
+            label_font = p.font.SysFont("Times New Roman", 14)
+
+            if r == 7:
+                file_label = label_font.render(move.cols_to_files[c], True, reversed_color)
+                file_label_rect = file_label.get_rect(center=(c * SQUARE_SIZE + SQUARE_SIZE - 8, HEIGHT - 10))
+                screen.blit(file_label, file_label_rect)
+
+            if c == 0:
+                rank_label = label_font.render(move.rows_to_ranks[r], True, reversed_color)
+                rank_label_rect = rank_label.get_rect(center=(6, r * SQUARE_SIZE + SQUARE_SIZE - 53))
+                screen.blit(rank_label, rank_label_rect)
 
 
 def highlight_moves(screen, game_state, valid_moves, square_selected):
@@ -121,7 +134,7 @@ def draw_move_log_panel(screen, game_state, font, offset):
     # Rectangle that closes the gap from the top of the move log background so the text will not appear.
     draw_rects(screen, WIDTH + 5, 0, MOVE_LOG_PANEL_WIDTH - 10, 25, MOVE_LOG_BACKGROUND_COLOR)
 
-    # Draw rectangles and texts on top of them.
+    # Draw the rectangle and the "Move log" text on top of it.
     draw_rects(screen, WIDTH + 5, 5, MOVE_LOG_PANEL_WIDTH - 10, 25, BORDER_COLOR)
     draw_texts(screen, WIDTH + 85, 6, 0, 0, "Move log")
 
@@ -133,35 +146,44 @@ def draw_game_menu_panel(screen, game_state):
     game_info_rect = p.Rect(WIDTH, MOVE_LOG_PANEL_HEIGHT, MOVE_LOG_PANEL_WIDTH, MOVE_LOG_PANEL_HEIGHT)
     p.draw.rect(screen, GAME_INFO_BACKGROUND_COLOR, game_info_rect)
 
-    # Draw rectangles and texts on top of them.
+    # Draw the rectangle and the "Game menu" text on top of it.
     draw_rects(screen, WIDTH + 5, MOVE_LOG_PANEL_HEIGHT, MOVE_LOG_PANEL_WIDTH - 10, 25, BORDER_COLOR)
     draw_texts(screen, WIDTH + 80, MOVE_LOG_PANEL_HEIGHT, 0, 0, "Game menu")
 
     # Draw the save button rectangle.
     draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 30, MOVE_LOG_PANEL_WIDTH - 20, 25, BORDER_COLOR)
     draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 33, 0, 0, "Save game", 15)
+    save_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 30, MOVE_LOG_PANEL_WIDTH - 20, 25)
 
     # Draw the load button rectangle.
     draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 60, MOVE_LOG_PANEL_WIDTH - 20, 25, BORDER_COLOR)
     draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 63, 0, 0, "Load game", 15)
+    load_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 60, MOVE_LOG_PANEL_WIDTH - 20, 25)
 
     # Draw the move back button rectangle.
     draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 90, (MOVE_LOG_PANEL_WIDTH / 2) - 10, 25, BORDER_COLOR)
     draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 93, 0, 0, "Move back", 15)
+    move_back_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 90, (MOVE_LOG_PANEL_WIDTH / 2) - 10, 25)
 
     # Draw the move forward button rectangle.
     draw_rects(screen, WIDTH + (MOVE_LOG_PANEL_WIDTH / 2) + 5, MOVE_LOG_PANEL_HEIGHT + 90,
                (MOVE_LOG_PANEL_WIDTH / 2) - 15, 25, BORDER_COLOR)
     draw_texts(screen, WIDTH + (MOVE_LOG_PANEL_WIDTH / 2) + 8, MOVE_LOG_PANEL_HEIGHT + 93, 0, 0,
                "Move forward", 15)
+    move_forward_button_rect = p.Rect(WIDTH + (MOVE_LOG_PANEL_WIDTH / 2) + 5, MOVE_LOG_PANEL_HEIGHT + 90,
+                                      (MOVE_LOG_PANEL_WIDTH / 2) - 15, 25)
 
     # Draw the reset button rectangle.
     draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 120, MOVE_LOG_PANEL_WIDTH - 20, 25, BORDER_COLOR)
     draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 123, 0, 0, "Reset game", 15)
+    reset_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 120, MOVE_LOG_PANEL_WIDTH - 20, 25)
 
     # Draw the exit the game button.
     draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 150, MOVE_LOG_PANEL_WIDTH - 20, 25, BORDER_COLOR)
     draw_texts(screen, WIDTH + 15, MOVE_LOG_PANEL_HEIGHT + 153, 0, 0, "Exit game", 15)
+    exit_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 150, MOVE_LOG_PANEL_WIDTH - 20, 25)
+
+    return save_button_rect, load_button_rect, move_back_button_rect, move_forward_button_rect, reset_button_rect, exit_button_rect
 
 
 def draw_texts(screen, left, top, width, height, text, size=18):
@@ -198,11 +220,11 @@ def draw_end_game_text(screen, text):
     screen.blit(text_surface, text_location.move(1, 1))
 
 
-def draw_game_state(screen, game_state, valid_moves, square_selected, move_log_font, move_log_offset):
+def draw_game_state(screen, game_state, valid_moves, square_selected, move_log_font, move_log_offset, move):
     """
     Responsible for all the graphics within a current game state.
     """
-    draw_board(screen)  # Draw squares on the board
+    draw_board_and_notation(screen, move)  # Draw squares on the board with ranks and files.
     highlight_moves(screen,
                     game_state,
                     valid_moves,
@@ -223,7 +245,7 @@ def animate_move(move, screen, board, clock):
     frame_count = (abs(d_row) + abs(d_col)) * frames_per_square
     for frame in range(frame_count + 1):
         r, c = (move.start_row + d_row * frame / frame_count, move.start_col + d_col * frame / frame_count)
-        draw_board(screen)
+        draw_board_and_notation(screen, move)
         draw_pieces(screen, board)
         # Erase the piece moved from its previous location.
         color = colors[((move.end_row + move.end_col) % 2)]
@@ -259,8 +281,8 @@ def load_game_state(screen, clock, filename="saved_game.txt"):
     """
     A function that loads the game state from a file by replaying the move log.
     """
-    with open(filename, "r") as f:
-        lines = [line.strip() for line in f.readlines() if line.strip() and not line.startswith('#')]
+    with open(filename, "r") as file:
+        lines = [line.strip() for line in file.readlines() if line.strip() and not line.startswith('#')]
 
     game_state = ChessEngine.GameState()
     game_state.redo_log = []
@@ -279,7 +301,6 @@ def load_game_state(screen, clock, filename="saved_game.txt"):
                     is_castle_flag = "castle" in notation_parts
                     if move.is_en_passant_move == is_ep_flag and move.is_castling_move == is_castle_flag:
                         game_state.make_move(move)
-                        # animate_move(game_state.move_log[-1], screen, game_state.board, clock)
                         break
             else:
                 messagebox.showerror("Invalid move", f"Invalid move found in save file: {notation_with_flags}")
@@ -301,6 +322,7 @@ def main():
     move_log_font = p.font.SysFont("Times New Roman", 17, False, False)
     game_state = ChessEngine.GameState()
     valid_moves = game_state.get_valid_moves()
+    move = ChessEngine.Move
     move_made = False  # When a move is made.
     animate = False  # When we want to show the animation of a move.
     game_over = False  # When the game is over.
@@ -311,14 +333,13 @@ def main():
     square_selected = ()
     player_clicks = []  # Keep track of player clicks (2 tuples: [(6, 4), (4, 4)])
 
-    # Rectangles that create fields of press on buttons.
-    save_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 30, MOVE_LOG_PANEL_WIDTH - 20, 25)
-    load_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 60, MOVE_LOG_PANEL_WIDTH - 20, 25)
-    move_back_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 90, (MOVE_LOG_PANEL_WIDTH / 2) - 10, 25)
-    move_forward_button_rect = p.Rect(WIDTH + (MOVE_LOG_PANEL_WIDTH / 2) + 5, MOVE_LOG_PANEL_HEIGHT + 90,
-                                      (MOVE_LOG_PANEL_WIDTH / 2) - 15, 25)
-    reset_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 120, MOVE_LOG_PANEL_WIDTH - 20, 25)
-    exit_button_rect = p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 150, MOVE_LOG_PANEL_WIDTH - 20, 25)
+    # Rectangles that create transparent fields for press of buttons.
+    (save_button_rect,
+     load_button_rect,
+     move_back_button_rect,
+     move_forward_button_rect,
+     reset_button_rect,
+     exit_button_rect) = draw_game_menu_panel(screen, game_state)
 
     # Constants for scrolling the move log panel.
     move_log_offset = 0
@@ -335,8 +356,8 @@ def main():
                     col = location[0] // SQUARE_SIZE
                     row = location[1] // SQUARE_SIZE
 
-                    if square_selected == (row,
-                                           col) or col >= 8:  # It means the user clicked the same square twice or the user clicked the mouse log.
+                    # It means the user clicked the same square twice or the user clicked the mouse log.
+                    if square_selected == (row, col) or col >= 8:
                         square_selected = ()  # Deselects the square.
                         player_clicks = []  # Clean player clicks.
                     else:
@@ -359,9 +380,8 @@ def main():
                     if save_button_rect.collidepoint(location):
                         save_game_state(game_state)
                         draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 30, MOVE_LOG_PANEL_WIDTH - 20, 25,
-                                   TEXT_COLOR)
+                                   TEXT_COLOR)  # Draws white rectangle so we can see the press of a button.
                         p.display.flip()
-                        # p.time.delay(200)
 
                     if load_button_rect.collidepoint(location):
                         loaded_game_state = load_game_state(screen, clock)
@@ -383,9 +403,9 @@ def main():
                             move_made = True
                             animate = False
                             game_over = False
-                        draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 90, (MOVE_LOG_PANEL_WIDTH / 2) - 10, 25,
-                                   TEXT_COLOR)
-                        p.display.flip()
+                            draw_rects(screen, WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 90, (MOVE_LOG_PANEL_WIDTH / 2) - 10,
+                                       25, TEXT_COLOR)
+                            p.display.flip()
 
                     if move_forward_button_rect.collidepoint(location):
                         if game_state.redo_log:
@@ -438,7 +458,7 @@ def main():
             move_made = False
             animate = False
 
-        draw_game_state(screen, game_state, valid_moves, square_selected, move_log_font, move_log_offset)
+        draw_game_state(screen, game_state, valid_moves, square_selected, move_log_font, move_log_offset, move)
 
         if game_state.checkmate or game_state.stalemate:
             game_over = True
