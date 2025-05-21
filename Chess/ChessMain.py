@@ -419,6 +419,7 @@ def main():
                     player_clicks = []
                     move_made = False
                     animate = False
+                    game_over = False
                     p.display.set_caption(f"Pygame chess: White's turn")
                     p.draw.rect(screen, TEXT_COLOR,
                                 p.Rect(WIDTH + 10, MOVE_LOG_PANEL_HEIGHT + 120, MOVE_LOG_PANEL_WIDTH - 20, 25))
