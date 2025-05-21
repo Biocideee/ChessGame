@@ -1,3 +1,6 @@
+from tkinter import messagebox
+
+
 class GameState:
     """
     This class is responsible for storing all the information about the current state of a chess game.
@@ -31,6 +34,7 @@ class GameState:
         self.black_king_location = (0, 4)  # Initial coordinates of the black king.
         self.checkmate = False
         self.stalemate = False
+        self.draw = False
         self.en_passant_possible = ()  # Coordinates for the square en passant capture are possible.
         self.castling_rights = Castling(True, True, True, True)
         self.castling_log = [
@@ -43,6 +47,7 @@ class GameState:
         ]
         self.pawn_promotion = False
         self.promotion_square = ()
+        self.promotion_piece_color = None
 
     def make_move(self, move):
         """
@@ -61,7 +66,15 @@ class GameState:
 
         # Pawn promotion.
         if move.is_pawn_promotion:
-            self.board[move.end_row][move.end_col] = move.piece_moved[0] + "Q"
+            if move.promotion_piece:  # If promotion_piece is provided, it's a normal promotion.
+                promoted_piece = move.piece_moved[0] + move.promotion_piece
+                self.board[move.end_row][move.end_col] = promoted_piece
+                move.piece_promoted = promoted_piece
+            else:
+                self.pawn_promotion = True
+                self.promotion_square = (move.end_row, move.end_col)
+                self.promotion_piece_color = move.piece_moved[0]
+            return  # End the move function after handling promotion
 
         # En passant move.
         if move.is_en_passant_move:
@@ -93,7 +106,7 @@ class GameState:
             )
         )
 
-    def undo_move(self, add_to_redo_stack=True):
+    def undo_move(self, add_to_redo=True):
         """
         Undo the last move made.
         """
@@ -120,16 +133,18 @@ class GameState:
                 self.en_passant_possible = ()
 
             # Undo castling rights.
-            self.castling_log.pop()  # Removing the last undoing element.
+            if self.castling_log:
+                self.castling_log.pop()  # Removing the last undoing element.
 
-            # Set the current castling rights to the last castling rights before the move was made.
-            new_castling_right = self.castling_log[-1]
-            self.castling_rights = Castling(
-                new_castling_right.white_king_side,
-                new_castling_right.black_king_side,
-                new_castling_right.white_queen_side,
-                new_castling_right.black_queen_side,
-            )
+                # Set the current castling rights to the last castling rights before the move was made.
+                if self.castling_log:
+                    new_castling_right = self.castling_log[-1]
+                    self.castling_rights = Castling(
+                        new_castling_right.white_king_side,
+                        new_castling_right.black_king_side,
+                        new_castling_right.white_queen_side,
+                        new_castling_right.black_queen_side,
+                    )
 
             #  Undo castling.
             if move.is_castling_move:
@@ -140,8 +155,14 @@ class GameState:
                     self.board[move.end_row][move.end_col - 2] = self.board[move.end_row][move.end_col + 1]
                     self.board[move.end_row][move.end_col + 1] = "--"
 
-            if add_to_redo_stack:
+            #  Add the move to the redo log so you can move forward.
+            if add_to_redo:
                 self.redo_log.append(move)
+
+            #  Reset the pawn promotion.
+            if move.is_pawn_promotion:
+                self.pawn_promotion = False
+                self.promotion_square = ()
 
     def redo_move(self):
         """
@@ -200,7 +221,7 @@ class GameState:
             if self.in_check():
                 moves.remove(moves[i])  # 5) If they do attack your king, not a valid move.
             self.white_to_move = not self.white_to_move
-            self.undo_move(add_to_redo_stack=False)
+            self.undo_move(add_to_redo=False)
 
         if len(moves) == 0:  # Either checkmate or stalemate.
             if self.in_check():
@@ -210,6 +231,11 @@ class GameState:
         else:
             self.checkmate = False
             self.stalemate = False
+
+        if self.check_for_draw():
+            self.draw = True
+        else:
+            self.draw = False
 
         self.en_passant_possible = temp_en_passant_possible
         self.castling_rights = temp_castling_rights
@@ -255,38 +281,40 @@ class GameState:
         Get all the pawn moves for the pawn located at row and column and add these moves to the list.
         """
         if self.white_to_move:  # White pawn moves.
-            if self.board[r - 1][c] == "--":
-                moves.append(Move((r, c), (r - 1, c), self.board))
-                if r == 6 and self.board[r - 2][c] == "--":  # 2 square pawn advance
-                    moves.append(Move((r, c), (r - 2, c), self.board))
-            # Captures for white
-            if c - 1 >= 0:  # Captures to the left.
-                if self.board[r - 1][c - 1][0] == "b":  # Enemy piece to capture.
-                    moves.append(Move((r, c), (r - 1, c - 1), self.board))
-                elif (r - 1, c - 1) == self.en_passant_possible:
-                    moves.append(Move((r, c), (r - 1, c - 1), self.board, is_en_passant_move=True))
-            if c + 1 <= 7:  # Captures to the right.
-                if self.board[r - 1][c + 1][0] == "b":  # Enemy piece to capture.
-                    moves.append(Move((r, c), (r - 1, c + 1), self.board))
-                elif (r - 1, c + 1) == self.en_passant_possible:
-                    moves.append(Move((r, c), (r - 1, c + 1), self.board, is_en_passant_move=True))
+            if r - 1 >= 0:
+                if self.board[r - 1][c] == "--":
+                    moves.append(Move((r, c), (r - 1, c), self.board))
+                    if r == 6 and self.board[r - 2][c] == "--":  # 2 square pawn advance
+                        moves.append(Move((r, c), (r - 2, c), self.board))
+                # Captures for white
+                if c - 1 >= 0:  # Captures to the left.
+                    if self.board[r - 1][c - 1][0] == "b":  # Enemy piece to capture.
+                        moves.append(Move((r, c), (r - 1, c - 1), self.board))
+                    elif (r - 1, c - 1) == self.en_passant_possible:
+                        moves.append(Move((r, c), (r - 1, c - 1), self.board, is_en_passant_move=True))
+                if c + 1 <= 7:  # Captures to the right.
+                    if self.board[r - 1][c + 1][0] == "b":  # Enemy piece to capture.
+                        moves.append(Move((r, c), (r - 1, c + 1), self.board))
+                    elif (r - 1, c + 1) == self.en_passant_possible:
+                        moves.append(Move((r, c), (r - 1, c + 1), self.board, is_en_passant_move=True))
 
         else:  # Black pawn moves.
-            if self.board[r + 1][c] == "--":
-                moves.append(Move((r, c), (r + 1, c), self.board))
-                if r == 1 and self.board[r + 2][c] == "--":  # 2 square pawn advance
-                    moves.append(Move((r, c), (r + 2, c), self.board))
-            # Captures for black
-            if c - 1 >= 0:  # Captures to the left.
-                if self.board[r + 1][c - 1][0] == "w":
-                    moves.append(Move((r, c), (r + 1, c - 1), self.board))
-                elif (r + 1, c - 1) == self.en_passant_possible:
-                    moves.append(Move((r, c), (r + 1, c - 1), self.board, is_en_passant_move=True))
-            if c + 1 <= 7:  # Captures to the right.
-                if self.board[r + 1][c + 1][0] == "w":
-                    moves.append(Move((r, c), (r + 1, c + 1), self.board))
-                elif (r + 1, c + 1) == self.en_passant_possible:
-                    moves.append(Move((r, c), (r + 1, c + 1), self.board, is_en_passant_move=True))
+            if r + 1 <= 7:
+                if self.board[r + 1][c] == "--":
+                    moves.append(Move((r, c), (r + 1, c), self.board))
+                    if r == 1 and self.board[r + 2][c] == "--":  # 2 square pawn advance
+                        moves.append(Move((r, c), (r + 2, c), self.board))
+                # Captures for black
+                if c - 1 >= 0:  # Captures to the left.
+                    if self.board[r + 1][c - 1][0] == "w":
+                        moves.append(Move((r, c), (r + 1, c - 1), self.board))
+                    elif (r + 1, c - 1) == self.en_passant_possible:
+                        moves.append(Move((r, c), (r + 1, c - 1), self.board, is_en_passant_move=True))
+                if c + 1 <= 7:  # Captures to the right.
+                    if self.board[r + 1][c + 1][0] == "w":
+                        moves.append(Move((r, c), (r + 1, c + 1), self.board))
+                    elif (r + 1, c + 1) == self.en_passant_possible:
+                        moves.append(Move((r, c), (r + 1, c + 1), self.board, is_en_passant_move=True))
 
     def get_rook_moves(self, r, c, moves):
         """
@@ -404,11 +432,116 @@ class GameState:
             if not self.square_under_attack(r, c - 1) and not self.square_under_attack(r, c - 2):
                 moves.append(Move((r, c), (r, c - 2), self.board, is_castling_move=True))
 
-    def get_king_location(self):
+    def check_for_draw(self):
         """
-        A function that returns the location of the king.
+        Checks for insufficient material for a draw.
+        Simplified version: K vs K, K vs KN, K vs KB.
+        More complex rules exist but are omitted for simplicity.
         """
-        return self.white_king_location if self.white_to_move else self.black_king_location
+        pieces_on_board = []
+
+        for r in range(len(self.board)):
+            for c in range(len(self.board[r])):
+                piece = self.board[r][c]
+                if piece != "--":
+                    pieces_on_board.append(piece)
+
+        if len(pieces_on_board) == 2:
+            return True  # Only Kings left.
+
+        if len(pieces_on_board) == 3:
+            # Find the non-king piece.
+            non_king_piece = ""
+            for piece in pieces_on_board:
+                if piece[1] != "K":
+                    non_king_piece = piece[1]
+                    break
+            if non_king_piece == "N" or non_king_piece == "B":
+                return True  # King vs King and Knight or King vs King and Bishop.
+
+        if len(pieces_on_board) == 4:
+            white_bishops = []
+            black_bishops = []
+            for r in range(len(self.board)):
+                for c in range(len(self.board[r])):
+                    piece = self.board[r][c]
+                    if piece == "wB":
+                        white_bishops.append((r, c))
+                    elif piece == "bB":
+                        black_bishops.append((r, c))
+                    if len(white_bishops) == 1 or len(black_bishops) == 1:
+                        # Check if bishops are on the same colored squares
+                        white_bishop_color = (white_bishops[0][0] + white_bishops[0][1]) % 2
+                        black_bishop_color = (black_bishops[0][0] + black_bishops[0][1]) % 2
+                        if white_bishop_color == black_bishop_color:
+                            return True  # King and Bishop vs King and Bishop on the same colored squares.
+
+        return False
+
+    def save_game_state(self, filename="saved_game.txt"):
+        """
+        A function that saves the game state (move log, en passant, castling rights, promotion) to a file.
+        """
+        with open(filename, "w") as file:
+            file.write("# Chess Game Save File\n")
+            for move in self.move_log:
+                notation = move.get_chess_notation()
+                if move.is_en_passant_move:
+                    notation += " ep"
+                elif move.is_castling_move:
+                    notation += " castle"
+
+                # Detect pawn promotion.
+                if move.piece_moved[1] == "p" and (move.end_row == 0 or move.end_row == 7):
+                    promoted_to = move.promotion_piece
+                    notation += f" promotion={promoted_to}"
+
+                file.write(f"{notation}\n")
+
+    @staticmethod
+    def load_game_state(filename="saved_game.txt"):
+        """
+        A function that loads the game state from a file by replaying the move log.
+        """
+        with open(filename, "r") as file:
+            lines = [line.strip() for line in file.readlines() if line.strip() and not line.startswith('#')]
+
+        game_state = GameState()
+        redo_log = []
+
+        for notation_with_flags in lines:
+            notation_parts = notation_with_flags.split()
+            notation = notation_parts[0]
+            promotion_piece = None
+
+            for part in notation_parts[1:]:
+                if part.startswith("promotion="):
+                    promotion_piece = part.split("=")[1]
+
+            if len(notation) == 4:
+                start_sq, end_sq = Move.get_row_col_from_notation(notation)
+                possible_moves = game_state.get_valid_moves()
+
+                for move in possible_moves:
+                    if (move.start_row == start_sq[0] and move.start_col == start_sq[1] and
+                            move.end_row == end_sq[0] and move.end_col == end_sq[1]):
+
+                        if promotion_piece:
+                            move.promotion_piece = promotion_piece
+                            move.piece_moved = move.piece_moved[0] + "p"
+                            move.piece_captured = game_state.board[move.end_row][
+                                move.end_col]
+                            move.piece_promoted = move.piece_moved[0] + promotion_piece
+
+                        game_state.make_move(move)
+                        break
+                else:
+                    messagebox.showerror("Invalid move", f"Invalid move found in save file: {notation_with_flags}")
+
+            elif notation_with_flags:
+                messagebox.showerror("Invalid notation format",
+                                     f"Warning: Invalid notation format in save file: {notation_with_flags}")
+        return game_state
 
 
 class Move:
@@ -425,15 +558,19 @@ class Move:
     cols_to_files = {v: k for k, v in files_to_cols.items()}
 
     def __init__(self, start_square, end_square, board, is_en_passant_move=False,
-                 is_castling_move=False):
+                 is_castling_move=False, promotion_piece=None):
         self.start_row = start_square[0]
         self.start_col = start_square[1]
         self.end_row = end_square[0]
         self.end_col = end_square[1]
         self.piece_moved = board[self.start_row][self.start_col]
         self.piece_captured = board[self.end_row][self.end_col]
+
+        # Pawn promotion.
         self.is_pawn_promotion = (self.piece_moved == "wp" and self.end_row == 0) or (
                 self.piece_moved == "bp" and self.end_row == 7)
+        self.promotion_piece = promotion_piece
+
         # En passant.
         self.is_en_passant_move = is_en_passant_move
         if self.is_en_passant_move:
@@ -444,6 +581,8 @@ class Move:
 
         self.is_capture = self.piece_captured != "--"
         self.move_ID = self.start_row * 1000 + self.start_col * 100 + self.end_row * 10 + self.end_col
+
+        # Pawn promotion.
 
     def __eq__(self, other):
         """
